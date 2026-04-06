@@ -56,6 +56,7 @@ export LOKI_ENDPOINT=http://localhost:3100/loki/api/v1/push
 
 ## Projects Using This Stack
 
-| Project | Dashboard |
-|---|---|
-| [VoxPocket](https://github.com/LeePepe/VoxPocket) | `grafana/dashboards/voxpocket.json` |
+| Project | Dashboard | Log label |
+|---|---|---|
+| VoxPocket (Swift/macOS) | `grafana/dashboards/voxpocket.json` | `{app="VoxPocket"}` |
+| Financial (FastAPI/React) | `grafana/dashboards/financial.json` | `{app="Financial"}` |

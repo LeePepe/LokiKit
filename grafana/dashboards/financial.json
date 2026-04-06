@@ -1,0 +1,110 @@
+{
+  "title": "Financial Performance",
+  "uid": "financial-perf",
+  "version": 1,
+  "schemaVersion": 39,
+  "refresh": "30s",
+  "time": { "from": "now-1h", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "title": "API Request Rate (req/s)",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 0, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "datasource": { "type": "loki" },
+          "expr": "sum by (method) (rate({app=\"Financial\", event=\"api.request\"} | logfmt [$__auto]))",
+          "legendFormat": "{{method}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "reqps", "custom": { "lineWidth": 2 } }
+      }
+    },
+    {
+      "id": 2,
+      "title": "API Response Time (ms)",
+      "type": "timeseries",
+      "gridPos": { "x": 12, "y": 0, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "datasource": { "type": "loki" },
+          "expr": "avg_over_time({app=\"Financial\", event=\"api.request\"} | logfmt | unwrap duration_ms [$__auto])",
+          "legendFormat": "avg duration_ms",
+          "refId": "A"
+        },
+        {
+          "datasource": { "type": "loki" },
+          "expr": "quantile_over_time(0.95, {app=\"Financial\", event=\"api.request\"} | logfmt | unwrap duration_ms [$__auto])",
+          "legendFormat": "p95 duration_ms",
+          "refId": "B"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "ms", "custom": { "lineWidth": 2 } }
+      }
+    },
+    {
+      "id": 3,
+      "title": "Daily Snapshot Events",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 8, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "datasource": { "type": "loki" },
+          "expr": "count_over_time({app=\"Financial\", event=\"snapshot.created\"} [$__auto])",
+          "legendFormat": "created",
+          "refId": "A"
+        },
+        {
+          "datasource": { "type": "loki" },
+          "expr": "count_over_time({app=\"Financial\", event=\"snapshot.failed\"} [$__auto])",
+          "legendFormat": "failed",
+          "refId": "B"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "short", "custom": { "lineWidth": 2 } }
+      }
+    },
+    {
+      "id": 4,
+      "title": "Error Rate",
+      "type": "timeseries",
+      "gridPos": { "x": 12, "y": 8, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "datasource": { "type": "loki" },
+          "expr": "sum(rate({app=\"Financial\"} | logfmt | level=\"error\" [$__auto]))",
+          "legendFormat": "errors/s",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "short", "custom": { "lineWidth": 2 } }
+      }
+    },
+    {
+      "id": 5,
+      "title": "Recent Logs",
+      "type": "logs",
+      "gridPos": { "x": 0, "y": 16, "w": 24, "h": 10 },
+      "options": {
+        "showTime": true,
+        "showLabels": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true,
+        "enableLogDetails": true
+      },
+      "targets": [
+        {
+          "datasource": { "type": "loki" },
+          "expr": "{app=\"Financial\"}",
+          "refId": "A"
+        }
+      ]
+    }
+  ]
+}
