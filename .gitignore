@@ -1,1 +1,10 @@
 .env
+.DS_Store
+.build/
+.swiftpm/
+Packages/
+*.xcodeproj
+xcuserdata/
+*.swp
+node_modules/
+dist/
