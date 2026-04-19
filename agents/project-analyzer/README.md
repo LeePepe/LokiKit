@@ -90,7 +90,7 @@ rendering via the `--dry-run` code path.
 jobs:
   - name: loki-project-analyzer
     schedule: "*/30 * * * *"   # every 30 minutes
-    command: /usr/bin/env bash -lc 'cd ~/Development/loki-telemetry-stack && LOKI_URL=http://localhost:3100 python3 agents/project-analyzer/run.py'
+    command: /usr/bin/env bash -lc 'cd ~/Development/LokiKit && LOKI_URL=http://localhost:3100 python3 agents/project-analyzer/run.py'
     log: ~/Library/Logs/loki-project-analyzer.log
 ```
 
@@ -109,7 +109,7 @@ Save as `~/Library/LaunchAgents/com.leepepe.loki-project-analyzer.plist`:
         <string>/usr/bin/env</string>
         <string>bash</string>
         <string>-lc</string>
-        <string>cd ~/Development/loki-telemetry-stack &amp;&amp; python3 agents/project-analyzer/run.py</string>
+        <string>cd ~/Development/LokiKit &amp;&amp; python3 agents/project-analyzer/run.py</string>
     </array>
     <key>EnvironmentVariables</key>
     <dict>
