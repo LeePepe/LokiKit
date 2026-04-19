@@ -27,14 +27,14 @@ Trigger this skill when:
 
 - Docker Desktop running.
 - The monorepo checked out locally. Default path:
-  `~/Development/loki-telemetry-stack`. Agents MAY override with
+  `~/Development/LokiKit`. Agents MAY override with
   `LOKI_STACK_DIR`.
 - Ports `3100` (Loki) and `3010` (Grafana) available, or customize
   via `stack/.env`.
 
 ## 3. Start the stack
 
-    cd "${LOKI_STACK_DIR:-$HOME/Development/loki-telemetry-stack}/stack"
+    cd "${LOKI_STACK_DIR:-$HOME/Development/LokiKit}/stack"
     cp -n .env.example .env            # first run only
     docker compose up -d
 
@@ -53,9 +53,9 @@ Verify:
 Add LokiKit as a local SPM dependency in `Package.swift`:
 
     dependencies: [
-        .package(path: "../loki-telemetry-stack/sdks/swift")
+        .package(path: "../LokiKit/sdks/swift")
         // or absolute:
-        // .package(path: "/Users/you/Development/loki-telemetry-stack/sdks/swift")
+        // .package(path: "/Users/you/Development/LokiKit/sdks/swift")
     ],
     targets: [
         .target(name: "MyApp", dependencies: [
@@ -88,9 +88,9 @@ Package name: `@leepepe/loki-web` (not yet on npm).
 
 Install from the monorepo path:
 
-    npm install ../loki-telemetry-stack/sdks/web
+    npm install ../LokiKit/sdks/web
     # or use npm link:
-    #   cd ../loki-telemetry-stack/sdks/web && npm link
+    #   cd ../LokiKit/sdks/web && npm link
     #   cd your-app && npm link @leepepe/loki-web
 
 Usage:
@@ -153,7 +153,7 @@ Example init labels:
 
 4. Reload:
 
-       cd "${LOKI_STACK_DIR:-$HOME/Development/loki-telemetry-stack}/stack"
+       cd "${LOKI_STACK_DIR:-$HOME/Development/LokiKit}/stack"
        docker compose restart grafana
        # (Grafana also rescans the folder every 30s.)
 

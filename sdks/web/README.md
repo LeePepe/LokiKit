@@ -83,4 +83,4 @@ Loki.
 
 ## Repo
 
-Part of [loki-telemetry-stack](../..).
+Part of [LokiKit](../..).

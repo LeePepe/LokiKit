@@ -1,11 +1,11 @@
-# loki-telemetry-stack
+# LokiKit
 
 A monorepo containing the shared local telemetry backend (Loki + Grafana) and the client SDKs that push logs to it.
 
 ## Layout
 
 ```
-loki-telemetry-stack/
+LokiKit/
 ├── stack/          # Docker Compose stack: Loki + Grafana + dashboards
 ├── sdks/
 │   └── swift/      # LokiKit — Swift Package for iOS/macOS
