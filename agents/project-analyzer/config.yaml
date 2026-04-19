@@ -1,0 +1,61 @@
+# project-analyzer configuration
+#
+# Loki URL precedence (highest first):
+#   1. --loki-url CLI flag
+#   2. LOKI_URL environment variable
+#   3. `loki.url` in this file
+#
+# Never commit bearer tokens here; use LOKI_TOKEN env instead.
+
+loki:
+  # Local dev default; override with LOKI_URL in production.
+  url: "http://localhost:3100"
+  # Default lookback for anomaly detection queries.
+  lookback: "1h"
+  # Baseline window for regression comparison.
+  baseline_lookback: "24h"
+  # Request timeout (seconds).
+  timeout: 30
+  # Max log lines per query.
+  query_limit: 5000
+
+thresholds:
+  # Error rate (errors / total actions) above which a spike is reported.
+  error_rate_spike: 0.05
+  # Minimum error count to qualify as a spike (avoid low-volume noise).
+  error_count_min: 5
+  # Performance regression: p95 latency ratio vs baseline above which we flag.
+  perf_regression_ratio: 1.5
+  # Silent failure: if user_action volume drops below this fraction of baseline.
+  silent_failure_ratio: 0.25
+  # Minimum baseline action count before silent-failure detection runs.
+  silent_failure_min_baseline: 20
+
+projects:
+  - name: agent-ops-dashboard
+    repo_path: "~/Development/agent-ops-dashboard"
+    team_lead: "agent-ops team"
+    selectors:
+      user_action: '{app="agent-ops-dashboard", stream="user_action"}'
+      performance: '{app="agent-ops-dashboard", stream="performance"}'
+
+  - name: Financial
+    repo_path: "~/Development/Financial"
+    team_lead: "Financial team"
+    selectors:
+      user_action: '{app="Financial", stream="user_action"}'
+      performance: '{app="Financial", stream="performance"}'
+
+  - name: MonitorSelf
+    repo_path: "~/Development/MonitorSelf"
+    team_lead: "MonitorSelf team"
+    selectors:
+      user_action: '{app="MonitorSelf", stream="user_action"}'
+      performance: '{app="MonitorSelf", stream="performance"}'
+
+  - name: soe
+    repo_path: "~/Development/soe"
+    team_lead: "soe team"
+    selectors:
+      user_action: '{app="soe", stream="user_action"}'
+      performance: '{app="soe", stream="performance"}'
