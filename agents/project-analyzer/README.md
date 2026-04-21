@@ -39,7 +39,40 @@ python3 agents/project-analyzer/run.py --loki-url http://loki.local:3100
 # Dry run (no network; useful for CI and smoke testing)
 python3 agents/project-analyzer/run.py --dry-run -v
 
-# See all flags
+# Daily summary mode — emits <date>.daily.json per project with
+# storage / usage / performance metrics and reports to agent-ops-dashboard.
+python3 agents/project-analyzer/run.py --daily
+
+# Daily + dry-run (no network, emits synthetic .daily.json for schema tests)
+python3 agents/project-analyzer/run.py --daily --dry-run
+```
+
+## Daily mode output
+
+Each configured project gets `reports/<project>/<YYYY-MM-DD>.daily.json`
+with three top-level sections:
+
+* `storage`  — Loki `/index/stats` (streams, chunks, bytes, entries) +
+               `line_count_proxy` fallback from `count_over_time`.
+* `usage`    — total / distinct actions, unique sessions, top-10 actions,
+               error count and rate over the last 24h.
+* `performance` — p50/p95/p99 current vs previous 24h baseline, with
+                `p95_change_pct` (positive = regression).
+
+Dashboard reporting is best-effort. If `AGENT_OPS_BASE_URL` is unreachable
+or the dashboard is down, the analyzer still writes JSON locally and
+continues. State (agent_id, api_key) is persisted at
+`~/.agent-ops/<name>.json`. Override with `AGENT_OPS_STATE_DIR` and
+`AGENT_OPS_NAME` env vars.
+
+## Scheduling via Hermes cron
+
+    @cronjob create schedule="0 8 * * *" name="lokikit-daily-analyzer" \
+      prompt="Run: cd ~/Development/LokiKit && python3 agents/project-analyzer/run.py --daily -v"
+
+## See all flags
+
+```bash
 python3 agents/project-analyzer/run.py --help
 ```
 

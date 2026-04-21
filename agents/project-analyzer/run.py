@@ -41,6 +41,14 @@ from lib.config import (
 )
 from lib.loki_client import LokiClient, LokiError, QueryResult
 from lib.report import format_remediation_brief, format_report
+from lib.daily import (
+    build_daily_summary,
+    compute_performance_comparison,
+    compute_usage_stats,
+    write_daily_json,
+)
+from lib.dashboard_reporter import DashboardReporter
+from lib.loki_stats import query_index_stats, StorageStats
 
 
 DEFAULT_CONFIG = _THIS_DIR / "config.yaml"
@@ -82,6 +90,11 @@ def build_arg_parser() -> argparse.ArgumentParser:
         "--dry-run",
         action="store_true",
         help="Do not query Loki; emit synthetic empty reports (useful for CI smoke).",
+    )
+    p.add_argument(
+        "--daily",
+        action="store_true",
+        help="Run daily summary mode: emit <date>.daily.json + report to dashboard.",
     )
     p.add_argument(
         "--verbose", "-v", action="store_true", help="Verbose logging."
@@ -181,6 +194,97 @@ def write_report_files(
     return report_path, brief_path
 
 
+def _run_daily(
+    client: LokiClient | None,
+    cfg: AppConfig,
+    projects: list,
+    output_dir: Path,
+    dry_run: bool,
+) -> int:
+    """Run the daily summary mode for all projects."""
+    from lib.analyzer import PerfStats
+
+    now = datetime.now(timezone.utc)
+    date_str = now.strftime("%Y-%m-%d")
+    daily_cfg = cfg.raw.get("daily", {})
+    lookback = daily_cfg.get("lookback", "24h")
+    baseline_lookback = daily_cfg.get("baseline_lookback", "48h")
+
+    # Setup dashboard reporter (best-effort, never fatal)
+    reporter = DashboardReporter(
+        name=os.environ.get("AGENT_OPS_NAME", "lokikit-project-analyzer"),
+        kind="telemetry_analyzer",
+        description="LokiKit daily project telemetry analyzer",
+    )
+    reporter.setup(os.environ.get("AGENT_OPS_BASE_URL"))
+
+    failures: list[str] = []
+    for project in projects:
+        log.info("[daily] Processing project: %s", project.name)
+        app_label = getattr(project, "loki_app_label", project.name.lower())
+
+        # STORAGE
+        if dry_run or client is None:
+            storage = StorageStats(streams=0, chunks=0, bytes_total=0, entries=0, line_count_proxy=0)
+        else:
+            storage = query_index_stats(cfg.loki.url, app_label, lookback=lookback, token=cfg.loki.token)
+
+        # USAGE
+        if dry_run or client is None:
+            usage_result = _empty_result(project.selector_user_action)
+        else:
+            usage_result = client.query_range(
+                project.selector_user_action, lookback, limit=cfg.loki.query_limit
+            )
+        usage = compute_usage_stats(usage_result)
+
+        # PERFORMANCE current + baseline
+        if dry_run or client is None:
+            perf_result = _empty_result(project.selector_performance)
+            baseline_perf_result = _empty_result(project.selector_performance)
+        else:
+            perf_result = client.query_range(
+                project.selector_performance, lookback, limit=cfg.loki.query_limit
+            )
+            baseline_perf_result = client.query_range(
+                project.selector_performance, baseline_lookback, limit=cfg.loki.query_limit
+            )
+
+        current_perf = summarize_performance(perf_result)
+        baseline_perf = summarize_performance(baseline_perf_result)
+        perf_comparison = compute_performance_comparison(current_perf, baseline_perf)
+
+        summary = build_daily_summary(
+            project_name=project.name,
+            date=date_str,
+            storage=storage,
+            usage=usage,
+            perf_comparison=perf_comparison,
+        )
+        json_path = write_daily_json(summary, output_dir)
+        log.info("[daily] Wrote %s", json_path)
+
+        # Also write the standard markdown report
+        try:
+            report = _analyze_project(client, cfg, project, dry_run=dry_run)
+            write_report_files(report, output_dir=output_dir, now=now)
+        except Exception as e:
+            log.warning("[daily] Markdown report failed for %s: %s", project.name, e)
+
+        # Dashboard: heartbeat + record_task (best-effort)
+        reporter.heartbeat(status="running", meta={"project": project.name, "mode": "daily"})
+        reporter.record_task(
+            kind="daily_summary",
+            ref=f"{project.name}/{date_str}",
+            payload={"project": project.name, "date": date_str, "json_path": str(json_path)},
+        )
+
+    if failures:
+        log.warning("Projects with errors: %s", ", ".join(failures))
+        return EXIT_RUNTIME_ERR
+    return EXIT_OK
+
+
 def run(argv: list[str] | None = None) -> int:
     args = build_arg_parser().parse_args(argv)
     _configure_logging(args.verbose)
@@ -205,6 +309,10 @@ def run(argv: list[str] | None = None) -> int:
         except LokiError as e:
             log.error("Failed to build Loki client: %s", e)
             return EXIT_RUNTIME_ERR
+
+    # Daily mode
+    if args.daily:
+        return _run_daily(client, cfg, projects, output_dir, args.dry_run)
 
     total_findings = 0
     failures: list[str] = []
