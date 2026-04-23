@@ -8,7 +8,11 @@ A monorepo containing the shared local telemetry backend (Loki + Grafana) and th
 LokiKit/
 ├── stack/          # Docker Compose stack: Loki + Grafana + dashboards
 ├── sdks/
-│   └── swift/      # LokiKit — Swift Package for iOS/macOS
+│   ├── swift/      # LokiKit — Swift Package for iOS/macOS
+│   ├── web/        # @leepepe/loki-web — TypeScript SDK
+│   └── python/     # lokikit — Python SDK (logging.Handler)
+├── docs/           # Onboarding checklist & guides
+├── scripts/        # Audit & utility scripts
 └── .claude/        # Agent teamwork config
 ```
 
@@ -61,9 +65,33 @@ export LOKI_ENDPOINT=http://localhost:3100/loki/api/v1/push
 | `LOKI_ENDPOINT` | Loki push URL |
 | `LOKI_TOKEN`    | Bearer token (leave unset for local dev) |
 
-## Web SDK
+## Web SDK (TypeScript)
 
-Coming soon under `sdks/web/`.
+See [`sdks/web/README.md`](sdks/web/README.md). Zero-dependency TypeScript SDK for browser and Node 18+.
+
+```typescript
+import { LokiTelemetry } from '@leepepe/loki-web';
+
+const t = new LokiTelemetry({
+  endpoint: 'http://localhost:3100/loki/api/v1/push',
+  labels: { app: 'MyApp', env: 'dev' },
+});
+t.info('hello', { key: 'value' });
+```
+
+## Python SDK
+
+See [`sdks/python/README.md`](sdks/python/README.md). Drop-in `logging.Handler` for FastAPI/Django/scripts.
+
+```python
+import logging
+from lokikit import LokiHandler
+
+handler = LokiHandler(labels={"app": "my-api", "env": "dev"})
+logger = logging.getLogger("my-api")
+logger.addHandler(handler)
+logger.info("Server started", extra={"port": 8000})
+```
 
 ## Skill
 
