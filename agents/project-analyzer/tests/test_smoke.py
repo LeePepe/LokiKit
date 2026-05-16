@@ -153,5 +153,112 @@ class EndToEndReportTests(unittest.TestCase):
         self.assertIn("project-analyzer", parser.prog)
 
 
+class StorageQueryParsingTests(unittest.TestCase):
+    """Smoke tests for Loki /index/stats response parsing."""
+
+    def test_parse_index_stats_response(self):
+        from lib.loki_stats import parse_index_stats_response
+        mock_response = {
+            "streams": 42,
+            "chunks": 1234,
+            "bytes": 5678900,
+            "entries": 99999,
+        }
+        stats = parse_index_stats_response(mock_response)
+        self.assertEqual(stats.streams, 42)
+        self.assertEqual(stats.chunks, 1234)
+        self.assertEqual(stats.bytes_total, 5678900)
+        self.assertEqual(stats.entries, 99999)
+        self.assertEqual(stats.line_count_proxy, 99999)
+
+    def test_parse_index_stats_empty(self):
+        from lib.loki_stats import parse_index_stats_response
+        stats = parse_index_stats_response({})
+        self.assertEqual(stats.streams, 0)
+        self.assertEqual(stats.bytes_total, 0)
+
+    def test_parse_duration_seconds(self):
+        from lib.loki_stats import _parse_duration_seconds
+        self.assertEqual(_parse_duration_seconds("24h"), 86400)
+        self.assertEqual(_parse_duration_seconds("1d"), 86400)
+        self.assertEqual(_parse_duration_seconds("30m"), 1800)
+
+
+class DailyJsonSchemaTests(unittest.TestCase):
+    """Smoke tests for daily JSON output schema."""
+
+    def test_daily_summary_json_schema(self):
+        from lib.daily import (
+            DailySummary, UsageStats, PerformanceComparison,
+            daily_summary_to_json,
+        )
+        from lib.loki_stats import StorageStats
+
+        summary = DailySummary(
+            project="test-project",
+            date="2025-01-15",
+            generated_at="2025-01-15T08:00:00+00:00",
+            storage=StorageStats(streams=10, chunks=100, bytes_total=5000, entries=200, line_count_proxy=200),
+            usage=UsageStats(
+                total_actions=50, distinct_action_count=5, unique_sessions=10,
+                top_actions=(("click", 20), ("load", 15)),
+                error_count=2, error_rate=0.04,
+            ),
+            performance=PerformanceComparison(
+                current_p50_ms=10.0, current_p95_ms=50.0, current_p99_ms=100.0,
+                baseline_p50_ms=9.0, baseline_p95_ms=45.0, baseline_p99_ms=90.0,
+                samples_current=100, samples_baseline=80, p95_change_pct=11.11,
+            ),
+        )
+        raw = daily_summary_to_json(summary)
+        obj = json.loads(raw)
+        self.assertEqual(obj["project"], "test-project")
+        self.assertEqual(obj["date"], "2025-01-15")
+        self.assertIn("storage", obj)
+        self.assertIn("usage", obj)
+        self.assertIn("performance", obj)
+        self.assertEqual(obj["storage"]["streams"], 10)
+        self.assertEqual(obj["usage"]["total_actions"], 50)
+        self.assertAlmostEqual(obj["performance"]["p95_change_pct"], 11.11)
+
+    def test_daily_dry_run(self):
+        """--daily --dry-run should succeed (exit 0)."""
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            from run import run as run_main
+            rc = run_main(["--daily", "--dry-run", "--output-dir", tmp])
+            self.assertEqual(rc, 0)
+            # Check that at least one .daily.json was created
+            json_files = list(Path(tmp).rglob("*.daily.json"))
+            self.assertTrue(len(json_files) > 0, "Expected at least one .daily.json file")
+            # Validate it's valid JSON with expected keys
+            content = json.loads(json_files[0].read_text())
+            for key in ("project", "date", "storage", "usage", "performance"):
+                self.assertIn(key, content)
+
+
+class DashboardReporterNoOpTests(unittest.TestCase):
+    """Reporter should be no-op when dashboard is unreachable."""
+
+    def test_reporter_noop_when_unreachable(self):
+        from lib.dashboard_reporter import DashboardReporter
+        reporter = DashboardReporter(
+            name="test-agent", kind="test", description="unit test"
+        )
+        # Setup against a non-existent URL — should not raise
+        reporter.setup("http://127.0.0.1:1")
+        self.assertFalse(reporter.enabled)
+        # These should all be silent no-ops
+        reporter.heartbeat(status="running")
+        reporter.record_task(kind="test", ref="ref/1")
+
+    def test_reporter_heartbeat_noop_without_setup(self):
+        from lib.dashboard_reporter import DashboardReporter
+        reporter = DashboardReporter(name="x", kind="x")
+        # No setup called — should not raise
+        reporter.heartbeat()
+        reporter.record_task(kind="test")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

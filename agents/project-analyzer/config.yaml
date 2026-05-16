@@ -19,6 +19,14 @@ loki:
   # Max log lines per query.
   query_limit: 5000
 
+daily:
+  # Enable daily summary mode (used with --daily flag).
+  enabled: true
+  # Lookback window for daily summary.
+  lookback: "24h"
+  # Baseline window for daily comparison (previous 24h).
+  baseline_lookback: "48h"
+
 thresholds:
   # Error rate (errors / total actions) above which a spike is reported.
   error_rate_spike: 0.05
@@ -35,6 +43,7 @@ projects:
   - name: agent-ops-dashboard
     repo_path: "~/Development/agent-ops-dashboard"
     team_lead: "agent-ops team"
+    loki_app_label: "agent-ops-dashboard"
     selectors:
       user_action: '{app="agent-ops-dashboard", stream="user_action"}'
       performance: '{app="agent-ops-dashboard", stream="performance"}'
@@ -42,6 +51,7 @@ projects:
   - name: Financial
     repo_path: "~/Development/Financial"
     team_lead: "Financial team"
+    loki_app_label: "financial"
     selectors:
       user_action: '{app="Financial", stream="user_action"}'
       performance: '{app="Financial", stream="performance"}'
@@ -49,6 +59,7 @@ projects:
   - name: MonitorSelf
     repo_path: "~/Development/MonitorSelf"
     team_lead: "MonitorSelf team"
+    loki_app_label: "monitorself"
     selectors:
       user_action: '{app="MonitorSelf", stream="user_action"}'
       performance: '{app="MonitorSelf", stream="performance"}'
@@ -56,6 +67,7 @@ projects:
   - name: soe
     repo_path: "~/Development/soe"
     team_lead: "soe team"
+    loki_app_label: "soe"
     selectors:
       user_action: '{app="soe", stream="user_action"}'
       performance: '{app="soe", stream="performance"}'

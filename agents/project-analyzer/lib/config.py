@@ -42,6 +42,7 @@ class ProjectConfig:
     team_lead: str
     selector_user_action: str
     selector_performance: str
+    loki_app_label: str = ""
 
 
 @dataclass(frozen=True)
@@ -49,6 +50,7 @@ class AppConfig:
     loki: LokiConfig
     thresholds: Thresholds
     projects: Tuple[ProjectConfig, ...]
+    raw: dict | None = None
 
 
 def _require(d: Mapping, key: str, ctx: str):
@@ -76,6 +78,7 @@ def _parse_project(raw: Mapping) -> ProjectConfig:
         team_lead=team_lead,
         selector_user_action=ua,
         selector_performance=perf,
+        loki_app_label=str(raw.get("loki_app_label", name.lower())).strip(),
     )
 
 
@@ -140,7 +143,7 @@ def load_config(path: str | Path) -> AppConfig:
     if env_token:
         loki = replace(loki, token=env_token)
 
-    return AppConfig(loki=loki, thresholds=thresholds, projects=projects)
+    return AppConfig(loki=loki, thresholds=thresholds, projects=projects, raw=dict(raw))
 
 
 def filter_projects(cfg: AppConfig, name: str | None) -> Tuple[ProjectConfig, ...]:
